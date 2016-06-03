@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Extended MultiStorage class that allows to remove the key field from the outputted files.
+ * Extended MultiStorage class that allows to remove the key field from the output files.
  */
 public class ExtendedMultiStorage extends MultiStorage {
 
