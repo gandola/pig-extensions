@@ -18,7 +18,7 @@ public class HashCode extends EvalFunc<Integer> {
 
         final Object obj = input.get(0);
         if (!(obj instanceof String) && !(obj instanceof Number)) {
-            throw new IllegalArgumentException("HashCode only supports Strings and Numbers");
+            throw new IllegalArgumentException("HashCode only supports Strings and Numbers. Value=" + String.valueOf(obj));
         }
         return obj.hashCode();
     }
