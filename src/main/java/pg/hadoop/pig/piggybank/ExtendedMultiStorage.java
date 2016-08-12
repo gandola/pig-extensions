@@ -7,37 +7,46 @@ import org.apache.pig.data.TupleFactory;
 import org.apache.pig.piggybank.storage.MultiStorage;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
- * Extended MultiStorage class that allows to remove the key field from the output files.
+ * Extended MultiStorage class that allows to choose the fields to keep on the output file.
  */
 public class ExtendedMultiStorage extends MultiStorage {
 
+    private static Pattern COMMA_PATTERN = Pattern.compile(",");
 
     protected static final String DEFAULT_COMPRESSION = "none";
     protected static final String DEFAULT_DELIMITER = "\\t";
 
-    protected final int keyIndex;
-    protected final boolean includeFieldIndex;
+    protected int[] indexesToOutput;
 
-    public ExtendedMultiStorage(String parentPathStr, String splitFieldIndex, String includeFieldIndex) {
-        this(parentPathStr, splitFieldIndex, DEFAULT_COMPRESSION, includeFieldIndex);
+    public ExtendedMultiStorage(String parentPathStr, String splitFieldIndex, String indexesToOutput) {
+        this(parentPathStr, splitFieldIndex, DEFAULT_COMPRESSION, indexesToOutput);
     }
 
-    public ExtendedMultiStorage(String parentPathStr, String splitFieldIndex, String compression, String includeFieldIndex) {
-        this(parentPathStr, splitFieldIndex, compression, DEFAULT_DELIMITER, includeFieldIndex);
+    public ExtendedMultiStorage(String parentPathStr, String splitFieldIndex, String compression, String indexesToOutput) {
+        this(parentPathStr, splitFieldIndex, compression, DEFAULT_DELIMITER, indexesToOutput);
     }
 
-    public ExtendedMultiStorage(String parentPathStr, String splitFieldIndex, String compression, String fieldDel, String includeFieldIndex) {
+    public ExtendedMultiStorage(String parentPathStr, String splitFieldIndex, String compression, String fieldDel, String indexesToOutput) {
         super(parentPathStr, splitFieldIndex, compression, fieldDel);
-        this.keyIndex = Integer.parseInt(splitFieldIndex);
-        this.includeFieldIndex = Boolean.parseBoolean(includeFieldIndex);
+        if (indexesToOutput != null && !indexesToOutput.isEmpty()) {
+            final String[] indexes = COMMA_PATTERN.split(indexesToOutput);
+            if (indexes.length > 0) {
+                this.indexesToOutput = new int[indexes.length];
+                for (int i = 0; i < indexes.length; i++) {
+                    this.indexesToOutput[i] = Integer.parseInt(indexes[i]);
+                }
+            }
+        }
     }
 
     @Override
     public void prepareToWrite(RecordWriter writer) throws IOException {
-        super.prepareToWrite(includeFieldIndex ? writer : new RecordWriterWrapper(writer));
+        super.prepareToWrite(indexesToOutput == null ? writer : new RecordWriterWrapper(writer));
     }
 
     /**
@@ -53,8 +62,11 @@ public class ExtendedMultiStorage extends MultiStorage {
 
         @Override
         public void write(String key, Tuple value) throws IOException, InterruptedException {
-            final List<Object> fields = value.getAll();
-            fields.remove(keyIndex);
+            final List<Object> fields = new ArrayList<>();
+            for (int indexToKeep : indexesToOutput) {
+                fields.add(value.get(indexToKeep));
+            }
+
             final Tuple newTuple = TupleFactory.getInstance().newTupleNoCopy(fields);
             originalWriter.write(key, newTuple);
         }
